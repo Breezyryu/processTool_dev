@@ -23,6 +23,8 @@ from .capacity_fit import (
     capacityfit,
     swellingfit,
     CapacityDegradationModel,
+    ModelParameters,
+    FittingResult,
     fit_capacity_model,
 )
 
@@ -41,6 +43,8 @@ __all__ = [
     'capacityfit',
     'swellingfit',
     'CapacityDegradationModel',
+    'ModelParameters',
+    'FittingResult',
     'fit_capacity_model',
     
     # EU prediction
