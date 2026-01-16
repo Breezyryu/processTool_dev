@@ -20,15 +20,7 @@ from dataclasses import dataclass
 from scipy.optimize import curve_fit
 from scipy.stats import linregress
 
-try:
-    from numba import njit
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    def njit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
+
 
 
 @dataclass

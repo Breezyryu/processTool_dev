@@ -21,11 +21,9 @@ Date: 2026-01-14
 
 from .capacity_fit import (
     capacityfit,
-    capacityfit_numba,
     swellingfit,
     CapacityDegradationModel,
     fit_capacity_model,
-    NUMBA_AVAILABLE,
 )
 
 from .eu_prediction import (
@@ -41,7 +39,6 @@ from .approval_prediction import (
 __all__ = [
     # Capacity fitting
     'capacityfit',
-    'capacityfit_numba',
     'swellingfit',
     'CapacityDegradationModel',
     'fit_capacity_model',

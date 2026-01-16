@@ -24,16 +24,7 @@ from typing import Dict, Tuple, Optional, NamedTuple
 from dataclasses import dataclass
 from scipy.optimize import minimize, curve_fit
 
-try:
-    from numba import njit, prange
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    def njit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-    prange = range
+
 
 
 class DegradationMetrics(NamedTuple):

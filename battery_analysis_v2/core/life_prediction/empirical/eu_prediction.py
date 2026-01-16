@@ -19,9 +19,7 @@ from .capacity_fit import (
     CapacityDegradationModel,
     ModelParameters,
     FittingResult,
-    capacityfit,
-    capacityfit_numba,
-    NUMBA_AVAILABLE
+    capacityfit
 )
 
 
@@ -65,19 +63,16 @@ class EULifePredictor:
     
     def __init__(self,
                  required_cycles: int = 1000,
-                 eol_threshold: float = 0.8,
-                 use_numba: bool = True):
+                 eol_threshold: float = 0.8):
         """
         Args:
             required_cycles: EU 요구 사이클 수
             eol_threshold: EOL 기준 (0.8 = 80%)
-            use_numba: Numba 최적화 사용
         """
         self.required_cycles = required_cycles
         self.eol_threshold = eol_threshold
-        self.use_numba = use_numba and NUMBA_AVAILABLE
         
-        self.model = CapacityDegradationModel(use_numba=self.use_numba)
+        self.model = CapacityDegradationModel()
         self._is_fitted = False
     
     def fit(self,
