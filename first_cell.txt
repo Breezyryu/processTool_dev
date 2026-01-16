@@ -1,0 +1,28 @@
+  0: import numpy as np
+  1: import pandas as pd
+  2: import matplotlib.pyplot as plt
+  3: from pathlib import Path
+  4: import warnings
+  5: warnings.filterwarnings('ignore')
+  6: 
+  7: # battery_analysis_v2 모듈 import
+  8: from battery_analysis_v2.core.data_loader import (
+  9:     detect_cycler_type,
+ 10:     PNELoader,
+ 11:     ToyoLoader,
+ 12:     CyclerType
+ 13: )
+ 14: 
+ 15: from battery_analysis_v2.core.life_prediction.empirical import (
+ 16:     CapacityDegradationModel,
+ 17:     ApprovalLifePredictor,
+ 18:     ModelParameters
+ 19: )
+ 20: 
+ 21: # 그래프 스타일 설정
+ 22: plt.rcParams['figure.figsize'] = (14, 6)
+ 23: plt.rcParams['font.size'] = 10
+ 24: plt.rcParams['axes.grid'] = True
+ 25: plt.rcParams['grid.alpha'] = 0.3
+ 26: 
+ 27: print('✓ 모듈 import 완료')
