@@ -25,16 +25,7 @@ from dataclasses import dataclass, field
 from scipy.optimize import curve_fit
 import warnings
 
-try:
-    from numba import njit, prange, float64
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    def njit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-    prange = range
+
 
 
 # ============================================================
@@ -112,78 +103,7 @@ def swellingfit(x: Tuple[np.ndarray, np.ndarray],
     return term1 + term2
 
 
-# ============================================================
-# Numba 최적화 버전 (Julia 비교용 벤치마크)
-# ============================================================
 
-if NUMBA_AVAILABLE:
-    @njit(parallel=True, fastmath=True)
-    def capacityfit_numba(x_cycle: np.ndarray, 
-                         x_temp: np.ndarray,
-                         a: float, b: float, b1: float,
-                         c: float, d: float, e: float, 
-                         f: float, fd: float) -> np.ndarray:
-        """
-        Numba 최적화된 용량 열화 모델
-        
-        병렬 처리 및 fastmath 옵션으로 최대 성능 달성
-        
-        Args:
-            x_cycle: 사이클 수 배열
-            x_temp: 온도 배열 (K)
-            a,b,b1,c,d,e,f,fd: 피팅 파라미터
-            
-        Returns:
-            잔존 용량 비율 배열
-        """
-        n = len(x_cycle)
-        result = np.empty(n)
-        
-        for i in prange(n):
-            cycle = x_cycle[i]
-            temp = x_temp[i]
-            
-            # Calendar aging term
-            term1 = np.exp(a * temp + b) * (cycle * fd) ** b1
-            
-            # Cycle aging term
-            term2 = np.exp(c * temp + d) * (cycle * fd) ** (e * temp + f)
-            
-            result[i] = 1.0 - term1 - term2
-        
-        return result
-    
-    @njit(parallel=True, fastmath=True)
-    def swellingfit_numba(x_cycle: np.ndarray,
-                         x_temp: np.ndarray,
-                         a: float, b: float, b1: float,
-                         c: float, d: float, e: float,
-                         f: float, fd: float) -> np.ndarray:
-        """
-        Numba 최적화된 스웰링 모델
-        """
-        n = len(x_cycle)
-        result = np.empty(n)
-        
-        for i in prange(n):
-            cycle = x_cycle[i]
-            temp = x_temp[i]
-            
-            term1 = np.exp(a * temp + b) * (cycle * fd) ** b1
-            term2 = np.exp(c * temp + d) * (cycle * fd) ** (e * temp + f)
-            
-            result[i] = term1 + term2
-        
-        return result
-else:
-    # Numba 미설치 시 순수 Python 폴백
-    def capacityfit_numba(x_cycle, x_temp, a, b, b1, c, d, e, f, fd):
-        """Numba 미설치 시 순수 Python 폴백"""
-        return capacityfit((x_cycle, x_temp), a, b, b1, c, d, e, f, fd)
-    
-    def swellingfit_numba(x_cycle, x_temp, a, b, b1, c, d, e, f, fd):
-        """Numba 미설치 시 순수 Python 폴백"""
-        return swellingfit((x_cycle, x_temp), a, b, b1, c, d, e, f, fd)
 
 
 # ============================================================
@@ -261,24 +181,18 @@ class CapacityDegradationModel:
     """
     
     def __init__(self, 
-                 initial_params: Optional[ModelParameters] = None,
-                 use_numba: bool = True):
+                 initial_params: Optional[ModelParameters] = None):
         """
         Args:
             initial_params: 초기 파라미터
-            use_numba: Numba 최적화 사용 여부
         """
         self.params = initial_params or ModelParameters.default()
-        self.use_numba = use_numba and NUMBA_AVAILABLE
         self._is_fitted = False
         self.fitting_result: Optional[FittingResult] = None
     
     def _capacity_func(self, x, a, b, b1, c, d, e, f, fd):
         """피팅용 래퍼 함수"""
-        if self.use_numba:
-            return capacityfit_numba(x[0], x[1], a, b, b1, c, d, e, f, fd)
-        else:
-            return capacityfit(x, a, b, b1, c, d, e, f, fd)
+        return capacityfit(x, a, b, b1, c, d, e, f, fd)
     
     def fit(self,
             cycles: np.ndarray,
@@ -358,20 +272,12 @@ class CapacityDegradationModel:
         cycles = np.asarray(cycles)
         temperatures = np.asarray(temperatures)
         
-        if self.use_numba:
-            return capacityfit_numba(
-                cycles, temperatures,
-                self.params.a, self.params.b, self.params.b1,
-                self.params.c, self.params.d, self.params.e,
-                self.params.f, self.params.fd
-            )
-        else:
-            return capacityfit(
-                (cycles, temperatures),
-                self.params.a, self.params.b, self.params.b1,
-                self.params.c, self.params.d, self.params.e,
-                self.params.f, self.params.fd
-            )
+        return capacityfit(
+            (cycles, temperatures),
+            self.params.a, self.params.b, self.params.b1,
+            self.params.c, self.params.d, self.params.e,
+            self.params.f, self.params.fd
+        )
     
     def predict_cycle_to_eol(self,
                              temperature: float,
@@ -405,8 +311,7 @@ class CapacityDegradationModel:
 def fit_capacity_model(cycles: np.ndarray,
                        temperatures: np.ndarray,
                        capacities: np.ndarray,
-                       initial_params: Optional[ModelParameters] = None,
-                       use_numba: bool = True) -> FittingResult:
+                       initial_params: Optional[ModelParameters] = None) -> FittingResult:
     """
     용량 열화 모델 피팅 헬퍼 함수
     
@@ -415,68 +320,14 @@ def fit_capacity_model(cycles: np.ndarray,
         temperatures: 온도 배열 (K)
         capacities: 용량 비율 배열
         initial_params: 초기 파라미터
-        use_numba: Numba 사용 여부
         
     Returns:
         FittingResult 객체
     """
     model = CapacityDegradationModel(
-        initial_params=initial_params,
-        use_numba=use_numba
+        initial_params=initial_params
     )
     return model.fit(cycles, temperatures, capacities)
 
 
-# ============================================================
-# 벤치마크 유틸리티
-# ============================================================
 
-def benchmark_fitting(n_points: int = 10000,
-                      n_iterations: int = 100) -> Dict[str, float]:
-    """
-    Python vs Numba 성능 벤치마크
-    
-    Args:
-        n_points: 데이터 포인트 수
-        n_iterations: 반복 횟수
-        
-    Returns:
-        벤치마크 결과 딕셔너리
-    """
-    import time
-    
-    # 테스트 데이터 생성
-    cycles = np.random.uniform(1, 1000, n_points)
-    temps = np.random.uniform(273 + 25, 273 + 45, n_points)
-    
-    # 파라미터
-    a, b, b1, c, d, e, f, fd = 0.03, -18, 0.7, 2.3, -782, -0.28, 96, 1
-    
-    # Python 버전 벤치마크
-    start = time.perf_counter()
-    for _ in range(n_iterations):
-        _ = capacityfit((cycles, temps), a, b, b1, c, d, e, f, fd)
-    python_time = (time.perf_counter() - start) / n_iterations
-    
-    # Numba 버전 벤치마크
-    if NUMBA_AVAILABLE:
-        # Warmup (JIT 컴파일)
-        _ = capacityfit_numba(cycles, temps, a, b, b1, c, d, e, f, fd)
-        
-        start = time.perf_counter()
-        for _ in range(n_iterations):
-            _ = capacityfit_numba(cycles, temps, a, b, b1, c, d, e, f, fd)
-        numba_time = (time.perf_counter() - start) / n_iterations
-    else:
-        numba_time = None
-    
-    results = {
-        'n_points': n_points,
-        'n_iterations': n_iterations,
-        'python_time_ms': python_time * 1000,
-        'numba_time_ms': numba_time * 1000 if numba_time else None,
-        'speedup': python_time / numba_time if numba_time else None,
-        'numba_available': NUMBA_AVAILABLE
-    }
-    
-    return results

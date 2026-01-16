@@ -19,17 +19,7 @@ import pandas as pd
 from typing import Tuple, Optional, Union
 from dataclasses import dataclass
 
-try:
-    from numba import njit, prange
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    # Numba가 없을 경우 데코레이터를 무시하는 더미 함수
-    def njit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator
-    prange = range
+
 
 from .halfcell_profiles import HalfCellProfile
 
@@ -282,75 +272,4 @@ class FullCellSimulator:
         return rmse
 
 
-# ============================================================
-# Numba 최적화 버전 (성능 벤치마크용)
-# ============================================================
 
-if NUMBA_AVAILABLE:
-    @njit(parallel=True, fastmath=True)
-    def _calculate_dvdq_numba(voltage: np.ndarray, 
-                               capacity: np.ndarray, 
-                               period: int) -> np.ndarray:
-        """
-        Numba 최적화된 dV/dQ 계산
-        
-        Args:
-            voltage: 전압 배열
-            capacity: 용량 배열
-            period: 미분 윈도우
-            
-        Returns:
-            dV/dQ 배열
-        """
-        n = len(voltage)
-        result = np.empty(n)
-        
-        for i in prange(n):
-            if i < period:
-                result[i] = np.nan
-            else:
-                dv = voltage[i] - voltage[i - period]
-                dq = capacity[i] - capacity[i - period]
-                if dq != 0:
-                    result[i] = dv / dq
-                else:
-                    result[i] = np.nan
-        
-        return result
-
-
-    @njit(fastmath=True)
-    def _simulate_fullcell_numba(
-        ca_capacity: np.ndarray,
-        ca_voltage: np.ndarray,
-        an_capacity: np.ndarray,
-        an_voltage: np.ndarray,
-        ca_mass: float,
-        ca_slip: float,
-        an_mass: float,
-        an_slip: float,
-        sim_capacity: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Numba 최적화된 Full-cell 전압 계산
-        
-        Returns:
-            (ca_volt, an_volt, full_volt) 튜플
-        """
-        n = len(sim_capacity)
-        ca_volt = np.empty(n)
-        an_volt = np.empty(n)
-        full_volt = np.empty(n)
-        
-        # 열화 적용된 용량
-        ca_cap_new = ca_capacity * ca_mass - ca_slip
-        an_cap_new = an_capacity * an_mass - an_slip
-        
-        for i in range(n):
-            q = sim_capacity[i]
-            # 선형 보간 (간단화된 버전)
-            ca_volt[i] = np.interp(q, ca_cap_new, ca_voltage)
-            an_volt[i] = np.interp(q, an_cap_new, an_voltage)
-            full_volt[i] = ca_volt[i] - an_volt[i]
-        
-        return ca_volt, an_volt, full_volt

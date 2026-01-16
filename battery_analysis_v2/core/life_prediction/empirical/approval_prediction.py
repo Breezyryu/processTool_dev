@@ -24,8 +24,7 @@ from .capacity_fit import (
     CapacityDegradationModel,
     ModelParameters,
     FittingResult,
-    capacityfit,
-    NUMBA_AVAILABLE
+    capacityfit
 )
 
 
@@ -83,23 +82,20 @@ class ApprovalLifePredictor:
                  test_temperature: float,
                  target_temperature: float = 298.15,
                  cycles_per_year: int = 365,  # 하루 1사이클 가정
-                 required_years: float = 8.0,
-                 use_numba: bool = True):
+                 required_years: float = 8.0):
         """
         Args:
             test_temperature: 시험 온도 (K)
             target_temperature: 목표 운용 온도 (K)
             cycles_per_year: 연간 예상 사이클 수
             required_years: 승인 요구 수명 (년)
-            use_numba: Numba 최적화 사용
         """
         self.test_temperature = test_temperature
         self.target_temperature = target_temperature
         self.cycles_per_year = cycles_per_year
         self.required_years = required_years
-        self.use_numba = use_numba and NUMBA_AVAILABLE
         
-        self.model = CapacityDegradationModel(use_numba=self.use_numba)
+        self.model = CapacityDegradationModel()
         self._is_fitted = False
         self._acceleration_factor: Optional[float] = None
     

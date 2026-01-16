@@ -32,23 +32,7 @@ class TestCapacityFit:
         assert all(result <= 1.0)  # 용량은 1 이하
         assert all(result > 0)     # 용량은 양수
     
-    def test_capacityfit_numba(self):
-        """Numba 버전 테스트"""
-        from battery_analysis_v2.core.life_prediction.empirical import (
-            capacityfit, capacityfit_numba, NUMBA_AVAILABLE
-        )
-        
-        cycles = np.array([100.0, 200.0, 300.0])
-        temps = np.array([298.15, 298.15, 298.15])
-        
-        params = (0.03, -18, 0.7, 2.3, -782, -0.28, 96, 1)
-        
-        result_py = capacityfit((cycles, temps), *params)
-        
-        if NUMBA_AVAILABLE:
-            result_numba = capacityfit_numba(cycles, temps, *params)
-            np.testing.assert_array_almost_equal(result_py, result_numba, decimal=10)
-    
+
     def test_model_parameters_default(self):
         """ModelParameters 기본값 테스트"""
         from battery_analysis_v2.core.life_prediction.empirical.capacity_fit import ModelParameters
@@ -82,7 +66,7 @@ class TestCapacityDegradationModel:
         """모델 예측 테스트"""
         from battery_analysis_v2.core.life_prediction.empirical import CapacityDegradationModel
         
-        model = CapacityDegradationModel(use_numba=False)
+        model = CapacityDegradationModel()
         
         cycles = np.array([100, 500, 1000])
         temps = np.array([298, 298, 298])
@@ -97,7 +81,7 @@ class TestCapacityDegradationModel:
         """EOL 예측 테스트"""
         from battery_analysis_v2.core.life_prediction.empirical import CapacityDegradationModel
         
-        model = CapacityDegradationModel(use_numba=False)
+        model = CapacityDegradationModel()
         
         eol_cycle = model.predict_cycle_to_eol(
             temperature=298.15,
